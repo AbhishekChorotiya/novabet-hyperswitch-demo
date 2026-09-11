@@ -9,7 +9,9 @@ import { useWallet, WAGERING_MULTIPLIER } from "@/components/Providers";
 import { money } from "@/lib/format";
 import { formatCurrency, fromMinorUnits } from "@/lib/currency";
 
-const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:5252";
+// Same-origin Next route handlers (app/api/*). No separate server to keep
+// alive, and no CORS — the API is deployed with the app.
+const SERVER_URL = "/api";
 // Settled states only. `processing` / `requires_capture` are NOT credited:
 // crediting an unsettled bank push or an uncaptured auth would hand a player
 // wagerable, cashoutable balance before the money has actually cleared.

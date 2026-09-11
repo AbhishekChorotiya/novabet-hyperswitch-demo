@@ -9,7 +9,9 @@ import { useWallet } from "@/components/Providers";
 import { money } from "@/lib/format";
 import { formatCurrency, fromMinorUnits } from "@/lib/currency";
 
-const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:5252";
+// Same-origin Next route handlers (app/api/*). No separate server to keep
+// alive, and no CORS — the API is deployed with the app.
+const SERVER_URL = "/api";
 
 // A withdrawal is only debited once the underlying transaction has settled.
 const SUCCESS_STATES = ["succeeded", "partially_captured"];

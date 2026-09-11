@@ -21,7 +21,9 @@ import useSdkIframeHeightFix from "@/lib/useSdkIframeHeightFix";
 const PRESETS = [25, 50, 100, 250, 500, 1000];
 const MIN_DEPOSIT = 10;
 const MAX_DEPOSIT = 10000;
-const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:5252";
+// Same-origin Next route handlers (app/api/*). No separate server to keep
+// alive, and no CORS — the API is deployed with the app.
+const SERVER_URL = "/api";
 
 export default function DepositPage() {
   const { theme } = useTheme();
@@ -72,7 +74,7 @@ export default function DepositPage() {
     } catch (err) {
       if (id !== reqId.current) return;
       setLoadError(
-        "Could not reach the payment server. Make sure `npm run server` is running on port 5252."
+        "Could not reach the payment service. Please check your connection and retry."
       );
     } finally {
       if (id === reqId.current) setFetching(false);

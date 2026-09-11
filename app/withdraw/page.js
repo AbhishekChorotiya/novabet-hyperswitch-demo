@@ -20,7 +20,9 @@ import {
 
 const MIN_WITHDRAWAL = 20;
 const MAX_WITHDRAWAL = 10000;
-const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:5252";
+// Same-origin Next route handlers (app/api/*). No separate server to keep
+// alive, and no CORS — the API is deployed with the app.
+const SERVER_URL = "/api";
 
 export default function WithdrawPage() {
   const { theme } = useTheme();
@@ -79,7 +81,7 @@ export default function WithdrawPage() {
     } catch (err) {
       if (id !== reqId.current) return;
       setLoadError(
-        "Could not reach the payout server. Make sure `npm run server` is running on port 5252."
+        "Could not reach the payout service. Please check your connection and retry."
       );
     } finally {
       if (id === reqId.current) setFetching(false);

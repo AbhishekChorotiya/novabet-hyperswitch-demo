@@ -9,12 +9,34 @@ real sandbox payment on the deposit page.
 ```bash
 npm install
 cp .env.example .env   # then fill in your Hyperswitch sandbox keys
-npm run server         # terminal 1 — payment server on :5252
-npm run dev            # terminal 2 — app on :3000
+npm run dev            # that's it — app + API on :3000
 ```
 
 `.env` is gitignored — it holds `HYPERSWITCH_SECRET_KEY`, which is only ever
-read server-side in `mockServer.cjs` and never sent to the browser.
+read inside `lib/hyperswitch.server.js`. That module is marked `server-only`,
+so importing it from a client component is a build error rather than a silent
+key leak.
+
+The API is a set of Next route handlers under `app/api/*` — there is no second
+process to run, and nothing to keep warm. A standalone Express server was the
+earlier approach; on Vercel it was an extra always-on dependency that could
+stop independently of the app, and it needed CORS. Same-origin route handlers
+deploy as serverless functions with the app and remove both problems.
+
+| Route | Purpose |
+|---|---|
+| `POST\|GET /api/create-payment-intent` | Open a deposit intent (DCC-aware) |
+| `GET /api/payment-status` | Verify a deposit before crediting |
+| `GET /api/create-withdrawal-intent` | Open a payout intent (cards only) |
+| `GET /api/withdrawal-status` | Verify a payout before debiting |
+| `GET /api/rates` | Published FX table, both sides of the spread |
+| `GET /api/health` | Config check — reports whether keys exist, never their values |
+
+All six are `force-dynamic`: they mint or read live payment state, so they must
+never be prerendered or served from the data cache. Note Next 14 patches global
+`fetch` to `force-cache` by default, so every Hyperswitch call passes
+`cache: "no-store"` explicitly — without it a payment retrieve can return a
+stale status, which is precisely the value the credit decision rests on.
 
 ## Pages
 
@@ -102,7 +124,7 @@ team would expect — and each property below is covered by an automated test:
 - **Cash vs bonus are separate ledgers.** Deposits credit withdrawable cash;
   the promo credits a bonus balance carrying a 35x wagering requirement, shown
   in the navbar wallet menu and on the receipt.
-- **Limits enforced server-side too.** `mockServer.cjs` rejects anything outside
+- **Limits enforced server-side too.** The route handlers reject anything outside
   $10–$10,000, so `curl '/create-payment-intent?amount=500000'` is a 400 rather
   than a $500k intent.
 - **Declines render as declines** — a separate failure state with a "Try Again"
@@ -126,7 +148,7 @@ Automated checks run against the live sandbox (18 assertions, all passing):
 
 ## Address handling: server-side, not in the SDK
 
-`mockServer.cjs` attaches full `billing` and `shipping` objects to the payment
+`lib/hyperswitch.server.js` attaches full `billing` and `shipping` objects to the payment
 intent — the same shape as `Hyperswitch-React-Demo-App/server.js`. The client
 then passes `fields: { billingDetails: "never" }`, the string form handled by
 `PaymentType.res` `getShowDetails` → `defaultNeverBilling`, which switches off
@@ -179,7 +201,7 @@ The wallet is denominated in **USD**; DCC lets the player choose the currency
 they're *charged* in. Pick a currency on `/deposit` and the intent is recreated
 in it, with the quote, rate and fee disclosed before payment.
 
-- **The server owns the rate.** `mockServer.cjs` holds the rate table and
+- **The server owns the rate.** `lib/hyperswitch.server.js` holds the rate table and
   recomputes the charge from the USD figure. The client only ever displays the
   quote the server returned, so `?amount=1000&currency=JPY&rate=0.0001` can't
   buy a $1,000 deposit for pennies.
@@ -256,6 +278,6 @@ direction of the money movement is the one thing here that isn't real. What
 - **Idempotent debit**, clamped at zero, with `processing` / `requires_capture`
   routed to a pending screen rather than debited.
 
-For a genuine payout demo, swap `/create-withdrawal-intent` for `POST /payouts`
+For a genuine payout demo, swap `/api/create-withdrawal-intent` for `POST /payouts`
 (verified working on this sandbox account — it returns a `payout_id` and a
 `requires_payout_method_data` status) and keep every guard above as-is.

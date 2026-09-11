@@ -7,7 +7,8 @@ import { compactMoney } from "@/lib/format";
 
 /**
  * Shared confirm surface for BOTH the deposit and the (mocked) withdrawal
- * flow — see mockServer.cjs for why a withdrawal is a no-3DS payment intent
+ * flow — see app/api/create-withdrawal-intent for why a withdrawal is a
+ * no-3DS payment intent
  * here. `basePath` decides which receipt page we land on, and therefore which
  * verification endpoint runs.
  */
